@@ -1,0 +1,417 @@
+/*Nombres: Raziel López, Gabriela Salado, Aldhair Hidalgo, Edgard Cárdenas
+Grupo 1S3111*/
+
+import java.io.*;
+
+public class MainBattleship {
+    public static void main(String[] args) {
+        try {
+            //Declaracion de variables 
+            BufferedReader lector = new BufferedReader(new InputStreamReader(System.in));
+            String coordenadas;
+            int fila, columna;
+            boolean acierto;
+
+            Jugador jugador1 = new Jugador("");
+            Jugador jugador2 = new Jugador("");
+
+            //Inicio de programa
+            System.out.print("Nombre del jugador 1: ");
+            jugador1 = new Jugador(lector.readLine());
+            System.out.print("Nombre del jugador 2: ");
+            jugador2 = new Jugador(lector.readLine());
+
+            System.out.println("\n*** " + jugador1.getNombre() + " ***");
+            jugador1.ColocarBarcos();
+            System.out.println("\n*** " + jugador2.getNombre() + " ***");
+            jugador2.ColocarBarcos();
+
+            System.out.println("\n¡Comienza el juego!");
+
+            Jugador jugadorActual = jugador1;
+            Jugador siguienteJugador = jugador2;
+
+            while (true) {
+                System.out.println("\n--- " + jugadorActual.getNombre() + " ---");
+                System.out.println("Tablero de tu flota:");
+                jugadorActual.getTableroFlota().ImprimirTablero();
+                System.out.println("\nTablero de tus ataques:");
+                jugadorActual.getTableroAtaques().ImprimirTablero();
+
+                coordenadas = "";
+                while (true) {
+                    try {
+                        System.out.println("Ingresa las coordenadas de ataque en este orden(letra-número Ej->B4): ");
+                        coordenadas = lector.readLine();
+                        if (coordenadas.equalsIgnoreCase("exit")) {
+                            System.out.println("\n¡" + jugadorActual.getNombre() + " se rindió! " + siguienteJugador.getNombre() + " es el ganador.");
+                            ImprimirNaves(jugador1);
+                            ImprimirNaves(jugador2);
+                            return;
+                        }
+
+                        if (!ValidarCoordenadas(coordenadas)) {
+                            throw new Exception("Coordenadas inválidas.");
+                        }
+
+                        fila = coordenadas.charAt(0) - 'A';
+                        columna = Integer.parseInt(coordenadas.substring(1)) - 1;
+                        if (jugadorActual.getTableroAtaques().getTablero()[fila][columna] == 'X' ||
+                                jugadorActual.getTableroAtaques().getTablero()[fila][columna] == 'O') {
+                            throw new Exception("Ya has atacado esa coordenada previamente.");
+                        }
+
+                        jugadorActual.getTableroAtaques().getTablero()[fila][columna] = 'X';
+                        acierto = VerificarAcierto(siguienteJugador, coordenadas);
+
+                        if (acierto) {
+                            System.out.println("¡Ataque exitoso!");
+
+                            // Verificar si se hundió completamente un barco
+                            if (VerificarHundimientoCompleto(siguienteJugador, coordenadas)) {
+                                System.out.println("¡Hundiste un barco!");
+                            }
+
+                            if (VerificarVictoria(siguienteJugador, jugadorActual)) {
+                                System.out.println("\n¡" + jugadorActual.getNombre() + " ha hundido toda la flota de " + siguienteJugador.getNombre() + "!");
+                                System.out.println(jugadorActual.getNombre() + " es el ganador.");
+                                ImprimirNaves(jugador1);
+                                ImprimirNaves(jugador2);
+                                return;
+                            }
+                        } else {
+                            System.out.println("El ataque no ha dado en el blanco.");
+                        }
+                        break;
+                    } catch (NumberFormatException e) {
+                        System.out.println("Error: Ingresa un número válido.");
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                }
+
+                // Cambiar de jugador
+                if (jugadorActual == jugador1) {
+                    jugadorActual = jugador2;
+                    siguienteJugador = jugador1;
+                } else {
+                    jugadorActual = jugador1;
+                    siguienteJugador = jugador2;
+                }
+
+                // Verificar si el jugador actual ha perdido
+                if (VerificarVictoria(jugadorActual, siguienteJugador)) {
+                    System.out.println("\n¡" + jugadorActual.getNombre() + " ha hundido toda la flota de " + siguienteJugador.getNombre() + "!");
+                    System.out.println(jugadorActual.getNombre() + " es el ganador.");
+                    ImprimirNaves(jugador1);
+                    ImprimirNaves(jugador2);
+                    return;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error de entrada/salida: " + e.getMessage());
+        }//Fin catch
+    }// Fin main
+
+    private static boolean ValidarCoordenadas(String coordenadas) {
+        if (coordenadas.matches("[A-I][1-9]")) {
+            return true;
+        }//fin if
+        return false;
+    }//Fin validar coordenadas
+
+
+    private static boolean VerificarAcierto(Jugador jugador, String coordenadas) {
+        int fila, columna;
+         int barcoFila, barcoColumna; 
+       
+
+        fila = coordenadas.charAt(0) - 'A';
+        columna = Integer.parseInt(coordenadas.substring(1)) - 1;
+
+        for (Barcos barco : jugador.getBarcos()) {
+            barcoFila = barco.getCoordenadas().charAt(0) - 'A';
+            barcoColumna = Integer.parseInt(barco.getCoordenadas().substring(1)) - 1;
+
+            if (barco.getOrientacion().equals("horizontal") && barcoFila == fila) {
+                for (int i = barcoColumna; i < barcoColumna + barco.getTamaño(); i++) {
+                    if (i == columna) {
+                        return true;
+                    }//fin if
+                }//fin ciclo for
+            } else if (barco.getOrientacion().equals("vertical") && barcoColumna == columna) {
+                for (int i = barcoFila; i < barcoFila + barco.getTamaño(); i++) {
+                    if (i == fila) {
+                        return true;
+                    }//fin if
+                }//fin ciclo for 
+            }//fin else if
+        }//fin ciclo for
+
+        return false;
+    }//fin VerificarAcierto
+    private static boolean VerificarHundimientoCompleto(Jugador jugador, String coordenadas) {
+        int fila, columna;
+    
+        fila = coordenadas.charAt(0) - 'A';
+        columna = Integer.parseInt(coordenadas.substring(1)) - 1;
+    
+        for (Barcos barco : jugador.getBarcos()) {
+            int barcoFila = barco.getCoordenadas().charAt(0) - 'A';
+            int barcoColumna = Integer.parseInt(barco.getCoordenadas().substring(1)) - 1;
+    
+            if (barco.getOrientacion().equals("horizontal")) {
+                for (int i = barcoColumna; i < barcoColumna + barco.getTamaño(); i++) {
+                    if (i != columna && jugador.getTableroAtaques().getTablero()[barcoFila][i] != 'X') {
+                        return false;
+                    }//fin if
+                }//fin ciclo for
+            } else if (barco.getOrientacion().equals("vertical")) {
+                for (int i = barcoFila; i < barcoFila + barco.getTamaño(); i++) {
+                    if (i != fila && jugador.getTableroAtaques().getTablero()[i][barcoColumna] != 'X') {
+                        return false;
+                    }//fin if
+                }//fin ciclo for
+            }//fin else if
+        }//fin ciclo for
+        return true;
+    }//Fin VerificarHundimeintoCompleto
+    
+    private static boolean VerificarVictoria(Jugador jugador, Jugador siguienteJugador) {
+        for (Barcos barco : siguienteJugador.getBarcos()) {
+            int barcoFila = barco.getCoordenadas().charAt(0) - 'A';
+            int barcoColumna = Integer.parseInt(barco.getCoordenadas().substring(1)) - 1;
+    
+            if (barco.getOrientacion().equals("horizontal")) {
+                for (int i = barcoColumna; i < barcoColumna + barco.getTamaño(); i++) {
+                    if (jugador.getTableroAtaques().getTablero()[barcoFila][i] != 'X') {
+                        return false;
+                    }//fin if
+                }//fin ciclo for
+            } else if (barco.getOrientacion().equals("vertical")) {
+                for (int i = barcoFila; i < barcoFila + barco.getTamaño(); i++) {
+                    if (jugador.getTableroAtaques().getTablero()[i][barcoColumna] != 'X') {
+                        return false;
+                    }//fin if
+                }//fin ciclo for
+            }//fir else if
+        }//fin ciclo for
+
+        return true;
+    }//fin VerificarVictoia    
+    
+    
+
+    private static void ImprimirNaves(Jugador jugador) {
+        System.out.println("\nCoordenadas de las naves de " + jugador.getNombre());
+        for (Barcos barco : jugador.getBarcos()) {
+            System.out.println("Nave de " + barco.getTamaño() +
+                    " " + barco.getCoordenadas() +
+                    " " + barco.getOrientacion());
+        }
+    }//fin ImprimirNaves
+}//Fin MainBattleship
+
+
+
+
+
+
+
+//clase Jugador
+import java.io.*;
+
+class Jugador {
+    private String nombre;
+    private Tablero tableroFlota;
+    private Tablero tableroAtaques;
+    private Barcos[] barcos;
+
+    public Jugador(String nombre) {
+        this.nombre = nombre;
+        tableroFlota = new Tablero();
+        tableroAtaques = new Tablero();
+        barcos = new Barcos[4];
+    }
+
+    public void ColocarBarcos() throws IOException {
+        BufferedReader lector = new BufferedReader(new InputStreamReader(System.in));
+        int tamaño;
+        String orientacion, coordenadas;
+
+        for (int i = 0; i < barcos.length; i++) {
+            tamaño = 0;
+            orientacion = "";
+            coordenadas = "";
+
+            while (true) {
+                try {
+                    System.out.println("Ingresa la información para el barco " + (i + 1) + ":");
+                    System.out.print("Tamaño (2-4): ");
+                    tamaño = Integer.parseInt(lector.readLine());
+                    if (tamaño < 2 || tamaño > 4) {
+                        throw new Exception("Tamaño inválido. Debe ser 2, 3 o 4.");
+                    }
+
+                    System.out.print("Orientación (horizontal/vertical): ");
+                    orientacion = lector.readLine();
+                    if (!orientacion.equals("horizontal") && !orientacion.equals("vertical")) {
+                        throw new Exception("Orientación inválida. Debe ser horizontal o vertical.");
+                    }
+
+                    System.out.print("Coordenadas (Ejemplo: A1): ");
+                    coordenadas = lector.readLine();
+                    if (!ValidarCoordenadas(coordenadas)) {
+                        throw new Exception("Coordenadas inválidas.");
+                    }
+
+                    if (!VerificarSuperposicion(coordenadas, tamaño, orientacion)) {
+                        throw new Exception("No se puede colocar el barco sobre otro barco.");
+                    }
+
+                    break;
+                } catch (NumberFormatException e) {
+                    System.out.println("Error: Ingresa un número válido.");
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage());
+                }
+            }
+
+            barcos[i] = new Barcos(tamaño, orientacion, coordenadas);
+            ColocarBarcoEnTablero(tableroFlota, coordenadas, tamaño, orientacion);
+        }
+    }
+
+    private boolean ValidarCoordenadas(String coordenadas) {
+        if (coordenadas.matches("[A-I][1-9]")) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean VerificarSuperposicion(String coordenadas, int tamaño, String orientacion) {
+        int fila, columna; 
+        fila = coordenadas.charAt(0) - 'A';
+        columna = Integer.parseInt(coordenadas.substring(1)) - 1;
+
+        if (orientacion.equals("horizontal")) {
+            for (int i = columna; i < columna + tamaño; i++) {
+                if (tableroFlota.getTablero()[fila][i] == 'B') {
+                    return false;
+                }
+            }
+        } else if (orientacion.equals("vertical")) {
+            for (int i = fila; i < fila + tamaño; i++) {
+                if (tableroFlota.getTablero()[i][columna] == 'B') {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void ColocarBarcoEnTablero(Tablero tablero, String coordenadas, int tamaño, String orientacion) {
+        int fila, columna;
+        fila = coordenadas.charAt(0) - 'A';
+        columna = Integer.parseInt(coordenadas.substring(1)) - 1;
+
+        if (orientacion.equals("horizontal")) {
+            for (int i = columna; i < columna + tamaño; i++) {
+                tablero.getTablero()[fila][i] = 'B';
+            }
+        } else if (orientacion.equals("vertical")) {
+            for (int i = fila; i < fila + tamaño; i++) {
+                tablero.getTablero()[i][columna] = 'B';
+            }
+        }
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public Tablero getTableroFlota() {
+        return tableroFlota;
+    }
+
+    public Tablero getTableroAtaques() {
+        return tableroAtaques;
+    }
+
+    public Barcos[] getBarcos() {
+        return barcos;
+    }
+}
+
+
+
+//clase Tablero
+class Tablero {
+    private final int FILAS = 9;
+    private final int COLUMNAS = 9;
+    private char[][] tablero;
+    char letra;
+
+    public Tablero() {
+        tablero = new char[FILAS][COLUMNAS];
+        for (int i = 0; i < FILAS; i++) {
+            for (int j = 0; j < COLUMNAS; j++) {
+                tablero[i][j] = '~';
+            }
+        }
+    }
+
+    public void ImprimirTablero() {
+        System.out.println("  1 2 3 4 5 6 7 8 9");
+        char letra = 'A';
+        for (int i = 0; i < FILAS; i++) {
+            System.out.print(letra + " ");
+            letra++;
+            for (int j = 0; j < COLUMNAS; j++) {
+                System.out.print(tablero[i][j] + " ");
+            }
+            System.out.println();
+        }
+    }
+    
+
+
+    public void colocarBarco(char letra, int numero) {
+        tablero[letra - 'A'][numero - 1] = 'B';
+    }
+
+    public char[][] getTablero() {
+        return tablero;
+    }
+}
+
+
+
+//clase Barcos
+class Barcos {
+    private int tamaño;
+    private String orientacion;
+    private String coordenadas;
+
+    public Barcos(int tamaño, String orientacion, String coordenadas) {
+        this.tamaño = tamaño;
+        this.orientacion = orientacion;
+        this.coordenadas = coordenadas;
+    }
+
+
+    public int getTamaño() {
+        return tamaño;
+    }
+
+    public String getOrientacion() {
+        return orientacion;
+    }
+
+    public String getCoordenadas() {
+        return coordenadas;
+    }
+
+}
+
